@@ -1,45 +1,57 @@
 package controller
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/websocket"
 
 	"demo/infrastructure"
+	"demo/service"
 )
 
 type ChatController interface {
-	ChatSockets(w http.ResponseWriter, r *http.Request)
+	UpgradeHandler(w http.ResponseWriter, r *http.Request)
 }
 
 type ChatControllerImpl struct {
-	socket *websocket.Upgrader
+	chatService service.ChatService
 }
 
-func (c *ChatControllerImpl) ChatSockets(w http.ResponseWriter, r *http.Request) {
-	conn, err := c.socket.Upgrade(w, r, nil)
+func (c *ChatControllerImpl) UpgradeHandler(w http.ResponseWriter, r *http.Request) {
+	conn, err := websocket.Upgrade(w, r, nil, 1024, 1024)
 	if err != nil {
 		log.Fatal("Connection socket error: ", err)
 		return
 	}
 	defer conn.Close()
 
-	for {
-		messageType, message, err := conn.ReadMessage()
-		if err != nil {
-			log.Fatal("Read message error: ", err)
-			return
+	connections := infrastructure.GetSocketConnections()
+	connectionsMutex := infrastructure.GetSocketConnectionsMutex()
+
+	// Add the new connection to the list of active connections.
+	connectionsMutex.Lock()
+	connections = append(connections, conn)
+	connectionsMutex.Unlock()
+
+	// Call the service to handle the connection.
+	c.chatService.PingScoket(conn)
+
+	// Remove the connection from the list of active connections.
+	connectionsMutex.Lock()
+	for i, c := range connections {
+		if c == conn {
+			connections = append(connections[:i], connections[i+1:]...)
+			break
 		}
-		fmt.Printf("================================/n --> message: %d - %s/n", messageType, string(message))
 	}
+	connectionsMutex.Unlock()
 }
 
 // Declare a variable to socket connection
 func NewChatController() ChatController {
-	var socket = infrastructure.GetSocket()
+	chatService := service.NewChatService()
 	return &ChatControllerImpl{
-		socket: socket,
+		chatService: chatService,
 	}
 }

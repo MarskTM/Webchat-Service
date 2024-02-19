@@ -1,22 +1,25 @@
 package infrastructure
 
 import (
-	"net/http"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
 
 var (
-	socket = websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true // Allow all origins
-		},
-	}
+	// Initialize a mutex to safely access the connections slice.
+	connectionsMutex sync.Mutex
+
+	// Initialize an empty slice to hold active connections.
+	connections []*websocket.Conn
 )
 
+func GetSocketConnections() []*websocket.Conn {
+	return connections
+}
 
-func GetSocket() *websocket.Upgrader {
-	return &socket
+func GetSocketConnectionsMutex() *sync.Mutex {
+	return &connectionsMutex
 }
 
 func init() {}
