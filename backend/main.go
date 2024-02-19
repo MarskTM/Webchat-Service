@@ -11,6 +11,11 @@ import (
 
 func main() {
 
+	// Configure the websocket server
+	hub := model.NewHub()
+	go hub.Run()
+
+
 	// Configure the http server
 	s := &http.Server{
 		Addr:               ":8080",

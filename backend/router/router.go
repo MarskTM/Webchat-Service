@@ -28,7 +28,8 @@ func Route() http.Handler {
 	// Declare the controller
 	chatController := controller.NewChatController()
 
-	r.HandleFunc("/chat", chatController.UpgradeHandler)
+	hub := 
+	r.HandleFunc("/hub", chatController.UpgradeHandler)
 
 	return r
 }
